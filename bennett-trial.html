@@ -33,8 +33,7 @@
   .tult  {right:6%; bottom:42%;width:10vmin;height:10vmin;font-size:4.5vmin;}
   .tjump {right:22%;bottom:9%; width:15vmin;height:15vmin;font-size:3.6vmin;}
   .tattack{right:4%;bottom:9%; width:17vmin;height:17vmin;font-size:4vmin;}
-  /* 触屏检测：仅触摸设备显示虚拟键 */
-  @media (pointer:coarse){ #touchui{display:block;} }
+  /* 触屏检测：仅移动设备（手机/平板）由 JS 显示虚拟键，电脑端（含触屏笔记本）不显示 */
 
 </style>
 </head>
@@ -242,8 +241,12 @@ function bindTouchUI(){
   if(typeof document === 'undefined') return;
   var ui = document.getElementById('touchui');
   if(!ui) return;
-  var isTouch = ('ontouchstart' in window) || (typeof navigator !== 'undefined' && navigator.maxTouchPoints > 0);
-  if(isTouch) ui.style.display = 'block';
+  // 仅移动设备显示虚拟键：触摸支持 + 移动端 UA（电脑端/触屏笔记本不显示）
+  var ua = (typeof navigator !== 'undefined' && navigator.userAgent) || '';
+  var isMobile = ('ontouchstart' in window) &&
+                 (navigator.maxTouchPoints > 0) &&
+                 /Mobi|Android|iPhone|iPad|iPod|Tablet|HarmonyOS/i.test(ua);
+  if(isMobile) ui.style.display = 'block';
   function bindBtn(id, down, up){
     var el = document.getElementById(id);
     if(!el) return;
