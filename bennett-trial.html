@@ -13,11 +13,46 @@
   #wrap{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;background:#05070d;}
   canvas{background:#0a0d16;display:block;box-shadow:0 0 80px rgba(120,60,20,.25);}
   #hint{position:fixed;bottom:8px;right:12px;color:#6b7280;font-size:12px;letter-spacing:1px;user-select:none;}
+
+  /* ===== 手机端虚拟按键（触屏设备才显示） ===== */
+  #touchui{position:fixed;inset:0;pointer-events:none;z-index:10;display:none;touch-action:none;-webkit-user-select:none;user-select:none;}
+  .tkey{position:absolute;pointer-events:auto;display:flex;align-items:center;justify-content:center;
+    background:rgba(255,255,255,.13);border:2px solid rgba(255,255,255,.32);border-radius:50%;
+    color:#fff;font-weight:bold;text-shadow:0 1px 3px rgba(0,0,0,.6);
+    transition:transform .08s, background .08s;touch-action:none;}
+  .tkey.active,.tkey:active{background:rgba(255,210,90,.42);transform:scale(.9);}
+  .tleft {left:3%;  bottom:9%; width:17vmin;height:17vmin;font-size:7vmin;}
+  .tright{left:22%; bottom:9%; width:17vmin;height:17vmin;font-size:7vmin;}
+  .tdash {right:22%;bottom:42%;width:11vmin;height:11vmin;font-size:3.2vmin;}
+  .tult  {right:6%; bottom:42%;width:10vmin;height:10vmin;font-size:4.5vmin;}
+  .tjump {right:22%;bottom:9%; width:15vmin;height:15vmin;font-size:3.6vmin;}
+  .tattack{right:4%;bottom:9%; width:17vmin;height:17vmin;font-size:4vmin;}
+  /* 触屏检测：仅触摸设备显示虚拟键 */
+  @media (pointer:coarse){ #touchui{display:block;} }
+
+  /* ===== 手机端竖屏旋转提示 ===== */
+  #rotate-hint{position:fixed;inset:0;background:rgba(6,8,16,.96);z-index:99;display:none;
+    align-items:center;justify-content:center;color:#ffd23a;font-size:6vmin;text-align:center;}
+  #rotate-hint small{color:#9aa0b5;font-size:4vmin;}
 </style>
 </head>
 <body>
 <div id="wrap"><canvas id="game" width="960" height="540"></canvas></div>
 <div id="hint">BENNETT · TRIAL OF BLAZING LIGHT</div>
+
+<!-- 手机端：虚拟按键（仅触屏设备显示） -->
+<div id="touchui">
+  <div class="tkey tleft"  id="tleft">◀</div>
+  <div class="tkey tright" id="tright">▶</div>
+  <div class="tkey tdash"  id="tdash">冲刺</div>
+  <div class="tkey tult"   id="tult">✦</div>
+  <div class="tkey tjump"  id="tjump">跳跃</div>
+  <div class="tkey tattack" id="tattack">攻击</div>
+</div>
+<!-- 手机端：竖屏旋转提示 -->
+<div id="rotate-hint">
+  <div>🔄 请横屏游玩<br><small>Rotate your device</small></div>
+</div>
 <script>
 'use strict';
 /* ============================================================================
@@ -194,24 +229,59 @@ function bindInput(){
   });
   window.addEventListener('keyup', function(e){ held[e.code] = false; });
   if(canvas){
+    // 点击/触摸画布空白区域 = 攻击（按钮区由 HTML 虚拟键层接管）
     canvas.addEventListener('pointerdown', function(e){
       e.preventDefault(); pointerAtk = true; SFX.ensure();
-      var r = canvas.getBoundingClientRect ? canvas.getBoundingClientRect() : null;
-      // 触摸按钮区（右侧三键）
-      if(r){
-        var px = (e.clientX - r.left) / r.width * W;
-        var py = (e.clientY - r.top) / r.height * H;
-        if(px > W-170 && py > H-150){ // 右下角虚拟键
-          if(px > W-170 && px < W-95){ touchDash = true; }
-          else if(px > W-95 && px < W-20){ pointerAtk = true; }
-          if(py > H-95){ touchJump = true; }
-          if(px > W-60 && py < H-150 && py > H-210){ touchUlt = true; }
-        }
-      }
     });
     window.addEventListener('pointerup', function(){ pointerAtk = false; touchDash=false; touchJump=false; touchUlt=false; });
   }
   window.addEventListener('blur', function(){ for(var k in held) held[k]=false; });
+}
+
+/* —— 手机端虚拟按键：HTML 覆盖层（仅触屏设备）——
+   左区：◀ ▶ 移动（驱动 held）；右区：跳跃/攻击/冲刺/大招（驱动 touch* 变量，复用现有边缘触发逻辑） */
+function bindTouchUI(){
+  if(typeof document === 'undefined') return;
+  var ui = document.getElementById('touchui');
+  if(!ui) return;
+  var isTouch = ('ontouchstart' in window) || (typeof navigator !== 'undefined' && navigator.maxTouchPoints > 0);
+  if(isTouch) ui.style.display = 'block';
+  function bindBtn(id, down, up){
+    var el = document.getElementById(id);
+    if(!el) return;
+    function setActive(on){ if(el.classList) el.classList.toggle('active', !!on); }
+    function release(){
+      setActive(false);
+      if(up) up();
+    }
+    el.addEventListener('pointerdown', function(e){
+      if(e && e.preventDefault) e.preventDefault();
+      setActive(true);
+      SFX.ensure();
+      if(down) down();
+    });
+    el.addEventListener('pointerup', release);
+    el.addEventListener('pointercancel', release);
+    el.addEventListener('pointerleave', release);
+    if(el.addEventListener) el.addEventListener('contextmenu', function(e){ if(e) e.preventDefault(); });
+  }
+  // 移动（复用键盘 held 逻辑：左右同时按则抵消）
+  bindBtn('tleft',  function(){ held['ArrowLeft']=true;  held['KeyA']=false; }, function(){ held['ArrowLeft']=false; });
+  bindBtn('tright', function(){ held['ArrowRight']=true; held['KeyD']=false; }, function(){ held['ArrowRight']=false; });
+  // 动作（复用 touch* 变量，updatePlayer 内 touchPrev 边缘触发）
+  bindBtn('tjump',   function(){ touchJump = true;  }, function(){ touchJump = false; });
+  bindBtn('tattack', function(){ pointerAtk = true;  }, function(){ pointerAtk = false; });
+  bindBtn('tdash',   function(){ touchDash = true;  }, function(){ touchDash = false; });
+  bindBtn('tult',    function(){ touchUlt  = true;  }, function(){ touchUlt  = false; });
+}
+
+/* —— 手机端横屏检测：竖屏时显示旋转提示 —— */
+function checkOrientation(){
+  if(typeof document === 'undefined') return;
+  var rh = document.getElementById('rotate-hint');
+  if(!rh) return;
+  var portrait = window.innerHeight > window.innerWidth;
+  rh.style.display = portrait ? 'flex' : 'none';
 }
 
 /* ============================ 4. 画布 ============================ */
@@ -2031,20 +2101,6 @@ function drawHUD(){
   g.textAlign = 'right';
   g.font = 'bold 14px "PingFang SC","Microsoft YaHei",sans-serif';
   g.fillText('得分 '+GAME.totalScore+'   死亡 '+GAME.deaths, W-18, 24);
-
-  // 触摸虚拟键（简单示意）
-  g.globalAlpha = 0.28;
-  g.fillStyle = '#fff';
-  g.beginPath(); g.arc(W-135, H-70, 26, 0, 6.2832); g.fill();  // 冲刺
-  g.beginPath(); g.arc(W-55, H-70, 26, 0, 6.2832); g.fill();  // 攻击
-  g.beginPath(); g.arc(W-95, H-115, 26, 0, 6.2832); g.fill(); // 跳跃
-  g.beginPath(); g.arc(W-28, H-160, 20, 0, 6.2832); g.fill(); // 大招
-  g.globalAlpha = 1;
-  g.fillStyle = '#000';
-  g.font = 'bold 14px sans-serif'; g.textAlign='center';
-  g.fillText('冲', W-135, H-66); g.fillText('攻', W-55, H-66);
-  g.fillText('跳', W-95, H-111); g.fillText('E', W-28, H-156);
-  g.globalAlpha = 1;
 }
 
 /* ============================ 12. 渲染 ============================ */
@@ -2422,6 +2478,12 @@ var lastTime = 0;
 function init(){
   setupCanvas();
   bindInput();
+  bindTouchUI();
+  checkOrientation();
+  if(typeof window !== 'undefined' && window.addEventListener){
+    window.addEventListener('resize', checkOrientation);
+    window.addEventListener('orientationchange', checkOrientation);
+  }
   initAssets2();
   initBGState();
   resetPlayer();
