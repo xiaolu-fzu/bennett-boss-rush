@@ -202,6 +202,7 @@ var pressed = [];         // 本帧刚按下的按键（边缘触发）
 var pointerAtk = false;   // 点击画布=攻击
 var touchDash = false, touchJump = false, touchUlt = false;
 var touchPrev = { dash:false, jump:false, ult:false };  // 触屏边缘触发记忆（按住不重复触发）
+var touchPressed = false; // 任意触摸交互（供标题/结算等"按任意键"判断，手机端进入游戏用）
 
 function just(code){
   var i = pressed.indexOf(code);
@@ -210,7 +211,7 @@ function just(code){
 }
 function anyGameKey(){
   var i = pressed.length; // 任意“确认类”按键
-  return i>0;
+  return i>0 || touchPressed;   // 手机端：任意触摸也视为确认输入
 }
 var GAME_KEYS = {
   'ArrowLeft':1,'ArrowRight':1,'ArrowUp':1,'ArrowDown':1,
@@ -225,6 +226,11 @@ function bindInput(){
     held[e.code] = true;
   });
   window.addEventListener('keyup', function(e){ held[e.code] = false; });
+  // 任意触摸/点击都算"确认输入"（标题/结算画面进入游戏；手机端必需）
+  if(typeof document !== 'undefined' && document.addEventListener){
+    document.addEventListener('pointerdown', function(){ touchPressed = true; });
+    document.addEventListener('touchstart', function(){ touchPressed = true; });
+  }
   if(canvas){
     // 点击/触摸画布空白区域 = 攻击（按钮区由 HTML 虚拟键层接管）
     canvas.addEventListener('pointerdown', function(e){
@@ -241,10 +247,11 @@ function bindTouchUI(){
   if(typeof document === 'undefined') return;
   var ui = document.getElementById('touchui');
   if(!ui) return;
-  // 仅移动设备显示虚拟键：触摸支持 + 移动端 UA（电脑端/触屏笔记本不显示）
+  // 仅移动设备显示虚拟键：触摸支持 + 移动端 UA + 排除 Windows/Mac 触屏设备
   var ua = (typeof navigator !== 'undefined' && navigator.userAgent) || '';
   var isMobile = ('ontouchstart' in window) &&
                  (navigator.maxTouchPoints > 0) &&
+                 !/Windows|Macintosh/i.test(ua) &&
                  /Mobi|Android|iPhone|iPad|iPod|Tablet|HarmonyOS/i.test(ua);
   if(isMobile) ui.style.display = 'block';
   function bindBtn(id, down, up){
@@ -1978,7 +1985,7 @@ function startLevel(i){
   boss = makeBoss(i);
   resetPlayer();
   projectiles = []; floaters = [];
-  pressed.length = 0;
+  pressed.length = 0; touchPressed = false;
   if(i === 0) GAME.startTime = gameTime;
   setState('intro');
   GAME.introT = 0;
@@ -1992,7 +1999,7 @@ function gotoTitle(){
   boss = null;
   resetPlayer();
   projectiles = [];
-  pressed.length = 0;
+  pressed.length = 0; touchPressed = false;
   setState('title');
 }
 
@@ -2008,7 +2015,7 @@ function update(dt){
   switch(GAME.state){
     case 'title':
       if(anyGameKey()){
-        pressed.length = 0;
+        pressed.length = 0; touchPressed = false;
         startLevel(0);
       }
       break;
@@ -2043,7 +2050,7 @@ function update(dt){
       break;
     case 'finale':
       if(anyGameKey()){
-        pressed.length = 0;
+        pressed.length = 0; touchPressed = false;
         gotoTitle();
       }
       break;
