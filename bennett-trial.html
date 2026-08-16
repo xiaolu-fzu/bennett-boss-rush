@@ -2,8 +2,15 @@
 <html lang="zh-CN">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
 <title>班尼特 · 炎光试炼 — Bennett: Trial of Blazing Light</title>
+<!-- PWA：添加到主屏幕后从图标打开 = 即开即全屏 + 横屏锁定 -->
+<link rel="manifest" href="manifest.json">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="炎光试炼">
+<link rel="apple-touch-icon" href="assets/bennett_character.png">
 <style>
   /* ============================================================
      样式层：全屏居中 + 16:9 信箱缩放 + 视觉氛围（纯 CSS，无外部依赖）
@@ -242,10 +249,10 @@ function bindInput(){
     held[e.code] = true;
   });
   window.addEventListener('keyup', function(e){ held[e.code] = false; });
-  // 任意触摸/点击都算"确认输入"（标题/结算画面进入游戏；手机端必需）
+  // 任意触摸/点击：确认输入（标题/结算进入游戏）+ 请求全屏
   if(typeof document !== 'undefined' && document.addEventListener){
-    document.addEventListener('pointerdown', function(){ touchPressed = true; });
-    document.addEventListener('touchstart', function(){ touchPressed = true; });
+    document.addEventListener('pointerdown', function(){ touchPressed = true; tryFullscreen(); });
+    document.addEventListener('touchstart', function(){ touchPressed = true; tryFullscreen(); });
   }
   if(canvas){
     // 点击/触摸画布空白区域 = 攻击（按钮区由 HTML 虚拟键层接管）
@@ -311,11 +318,13 @@ function checkOrientation(){
   canvas.style.width = (W*s)+'px';
   canvas.style.height = (H*s)+'px';
 }
-/* 首次用户交互时尝试全屏 + 锁定横屏（Android Chrome 生效；iOS 忽略，靠伪横屏兜底） */
-var fullscreenTried = false;
+/* 进入全屏 + 锁定横屏：
+   - 页面加载后自动尝试一次（部分浏览器放行）；
+   - 浏览器要求用户手势：首次触摸/按键时再次请求（几乎无感的全屏）。
+   iOS Safari 不支持网页全屏 → 用 PWA（manifest display:fullscreen）从主屏幕图标打开即全屏。 */
 function tryFullscreen(){
-  if(fullscreenTried) return;
-  fullscreenTried = true;
+  if(typeof document === 'undefined') return;
+  if(document.fullscreenElement || document.webkitFullscreenElement) return; // 已全屏
   try{
     var el = document.documentElement;
     if(el.requestFullscreen){ el.requestFullscreen().catch(function(){}); }
@@ -2368,10 +2377,10 @@ function drawStateOverlay(){
     g.fillStyle = 'rgba(230,230,235,0.95)';
     g.font = '16px "PingFang SC","Microsoft YaHei",sans-serif';
     var lines = [
-      'A/D 移动    空格/W 跳跃(二段)    J/Z 攻击(三连斩)',
-      'K/X/Shift 短冲刺(无敌帧)    E/Q 元素爆发    P 暂停    R 重试',
+      'A/D 移动    空格/W 跳跃(二段)    J/Z 星星魔法    K/X/Shift 冲刺    E/Q 大招',
+      '手机：自动全屏横屏 + 虚拟按键，点一下屏幕即进入',
       '',
-      '—— 按任意键开始 ——'
+      '—— 按任意键 / 点击屏幕开始 ——'
     ];
     for(var i=0;i<lines.length;i++){
       g.fillText(lines[i], cx, 462+i*26);
@@ -2530,6 +2539,8 @@ function init(){
   boss = null;
   gameTime = 0;
   GAME.startTime = 0;
+  // 页面加载后立即尝试全屏（被浏览器拒绝则等首次触摸再触发）
+  if(typeof setTimeout !== 'undefined') setTimeout(tryFullscreen, 600);
   if(typeof requestAnimationFrame !== 'undefined' && !window.__DSH_QA__){
     lastTime = performance.now();
     requestAnimationFrame(loop);

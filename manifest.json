@@ -1,0 +1,18 @@
+{
+  "name": "班尼特·炎光试炼",
+  "short_name": "炎光试炼",
+  "description": "类空洞骑士 Boss Rush 单屏动作游戏：三关三 Boss、星星魔法、班尼特Q版",
+  "start_url": "bennett-trial.html",
+  "scope": "./",
+  "display": "fullscreen",
+  "orientation": "landscape",
+  "background_color": "#05070d",
+  "theme_color": "#05070d",
+  "icons": [
+    {
+      "src": "assets/bennett_character.png",
+      "sizes": "1024x1024",
+      "type": "image/png"
+    }
+  ]
+}
