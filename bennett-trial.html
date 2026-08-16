@@ -44,7 +44,7 @@
   }
 
   /* ===== 手机端虚拟按键（触屏设备才显示） ===== */
-  #touchui{position:fixed;inset:0;pointer-events:none;z-index:10;display:none;touch-action:none;-webkit-user-select:none;user-select:none;}
+  #touchui{position:fixed;inset:0;pointer-events:none;z-index:9999;display:none;touch-action:none;-webkit-user-select:none;user-select:none;}
   .tkey{position:absolute;pointer-events:auto;display:flex;align-items:center;justify-content:center;
     background:rgba(255,255,255,.13);border:2px solid rgba(255,255,255,.32);border-radius:50%;
     color:#fff;font-weight:bold;text-shadow:0 1px 3px rgba(0,0,0,.6);
@@ -266,17 +266,18 @@ function bindInput(){
 
 /* —— 手机端虚拟按键：HTML 覆盖层（仅触屏设备）——
    左区：◀ ▶ 移动（驱动 held）；右区：跳跃/攻击/冲刺/大招（驱动 touch* 变量，复用现有边缘触发逻辑） */
-function bindTouchUI(){
+/* —— 手机端虚拟按键显示控制（全屏/旋转变化时也会重新执行）—— */
+function ensureTouchUI(){
   if(typeof document === 'undefined') return;
   var ui = document.getElementById('touchui');
   if(!ui) return;
-  // 仅移动设备显示虚拟键：触摸支持 + 移动端 UA + 排除 Windows/Mac 触屏设备
+  // 触摸设备且非桌面系统（Windows/Mac）→ 显示虚拟键；全屏后同样保持
   var ua = (typeof navigator !== 'undefined' && navigator.userAgent) || '';
-  var isMobile = ('ontouchstart' in window) &&
-                 (navigator.maxTouchPoints > 0) &&
-                 !/Windows|Macintosh/i.test(ua) &&
-                 /Mobi|Android|iPhone|iPad|iPod|Tablet|HarmonyOS/i.test(ua);
-  if(isMobile) ui.style.display = 'block';
+  var isMobile = ('ontouchstart' in window) && (navigator.maxTouchPoints > 0) && !/Windows|Macintosh/i.test(ua);
+  ui.style.display = isMobile ? 'block' : 'none';
+}
+function bindTouchUI(){
+  ensureTouchUI();
   function bindBtn(id, down, up){
     var el = document.getElementById(id);
     if(!el) return;
@@ -311,6 +312,7 @@ function bindTouchUI(){
    画布尺寸按旋转后的可用区域（宽=屏高、高=屏宽）重算；无需用户手动旋转 —— */
 function checkOrientation(){
   if(!canvas) return;
+  ensureTouchUI();   // 全屏/旋转后确保虚拟键仍显示
   var portrait = window.innerHeight > window.innerWidth;
   var availW = portrait ? window.innerHeight : window.innerWidth;
   var availH = portrait ? window.innerWidth : window.innerHeight;
@@ -2532,6 +2534,7 @@ function init(){
   if(typeof window !== 'undefined' && window.addEventListener){
     window.addEventListener('resize', checkOrientation);
     window.addEventListener('orientationchange', checkOrientation);
+    window.addEventListener('fullscreenchange', checkOrientation);   // 全屏切换后重检虚拟键显示
   }
   initAssets2();
   initBGState();
