@@ -21,28 +21,6 @@
   canvas{background:#0a0d16;display:block;box-shadow:0 0 80px rgba(120,60,20,.25);}
   #hint{position:fixed;bottom:8px;right:12px;color:#6b7280;font-size:12px;letter-spacing:1px;user-select:none;}
 
-  /* ===== 手机端竖屏伪横屏：游戏画面自动旋转 90° 显示（无需用户旋转手机） =====
-     关键：旋转前先把元素中心定位到视口中心（left/top 50% + 负 margin 半尺寸），
-     否则 rotate 绕偏离中心的轴转会导致画面一半在屏外 */
-  @media (orientation: portrait){
-    #wrap{
-      left:50%; top:50%; right:auto; bottom:auto;
-      width:100vh; width:100dvh;            /* iOS 动态视口，避开地址栏 */
-      height:100vw;
-      margin-left:-50vh; margin-left:-50dvh;
-      margin-top:-50vw;
-      transform:rotate(90deg);
-    }
-    #touchui{
-      left:50%; top:50%; right:auto; bottom:auto;
-      width:100vh; width:100dvh;
-      height:100vw;
-      margin-left:-50vh; margin-left:-50dvh;
-      margin-top:-50vw;
-      transform:rotate(90deg);
-    }
-  }
-
   /* ===== 手机端虚拟按键（触屏设备才显示） ===== */
   #touchui{position:fixed;inset:0;pointer-events:none;z-index:9999;display:none;touch-action:none;-webkit-user-select:none;user-select:none;}
   .tkey{position:absolute;pointer-events:auto;display:flex;align-items:center;justify-content:center;
@@ -322,9 +300,34 @@ function bindTouchUI(){
 
 /* —— 手机端方向适配：竖屏时游戏画面自动旋转 90° 伪横屏显示，
    画布尺寸按旋转后的可用区域（宽=屏高、高=屏宽）重算；无需用户手动旋转 —— */
+/* —— 手机端方向适配：竖屏时「游戏画面 + 虚拟按键」同步旋转 90° 伪横屏显示
+   （JS 统一控制，保证两者严格同步，微信 X5 等内核也可靠）；
+   旋转前先把元素中心定位到视口中心，否则 rotate 绕偏离中心轴转会导致画面一半在屏外 —— */
+function applyPortraitLayout(){
+  if(typeof document === 'undefined') return;
+  var portrait = window.innerHeight > window.innerWidth;
+  var els = [document.getElementById('wrap'), document.getElementById('touchui')];
+  for(var i=0;i<els.length;i++){
+    var el = els[i];
+    if(!el) continue;
+    if(portrait){
+      el.style.position = 'fixed';
+      el.style.left = '50%'; el.style.top = '50%';
+      el.style.right = 'auto'; el.style.bottom = 'auto';
+      el.style.width = '100vh'; el.style.height = '100vw';
+      el.style.marginLeft = '-50vh'; el.style.marginTop = '-50vw';
+      el.style.transform = 'rotate(90deg)';
+    } else {
+      el.style.left=''; el.style.top=''; el.style.right=''; el.style.bottom='';
+      el.style.width=''; el.style.height=''; el.style.marginLeft=''; el.style.marginTop='';
+      el.style.transform='';   // 恢复 CSS base（#wrap/#touchui 的 inset:0）
+    }
+  }
+}
 function checkOrientation(){
   if(!canvas) return;
-  ensureTouchUI();   // 全屏/旋转后确保虚拟键仍显示
+  applyPortraitLayout();   // 先同步旋转布局
+  ensureTouchUI();         // 再确保虚拟键显示
   var portrait = window.innerHeight > window.innerWidth;
   var availW = portrait ? window.innerHeight : window.innerWidth;
   var availH = portrait ? window.innerWidth : window.innerHeight;
