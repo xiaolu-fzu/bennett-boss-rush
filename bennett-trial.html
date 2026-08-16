@@ -14,10 +14,26 @@
   canvas{background:#0a0d16;display:block;box-shadow:0 0 80px rgba(120,60,20,.25);}
   #hint{position:fixed;bottom:8px;right:12px;color:#6b7280;font-size:12px;letter-spacing:1px;user-select:none;}
 
-  /* ===== 手机端竖屏伪横屏：游戏画面自动旋转 90° 显示（无需用户旋转手机） ===== */
+  /* ===== 手机端竖屏伪横屏：游戏画面自动旋转 90° 显示（无需用户旋转手机） =====
+     关键：旋转前先把元素中心定位到视口中心（left/top 50% + 负 margin 半尺寸），
+     否则 rotate 绕偏离中心的轴转会导致画面一半在屏外 */
   @media (orientation: portrait){
-    #wrap{transform:rotate(90deg); width:100vh; height:100vw;}
-    #touchui{transform:rotate(90deg); width:100vh; height:100vw;}
+    #wrap{
+      left:50%; top:50%; right:auto; bottom:auto;
+      width:100vh; width:100dvh;            /* iOS 动态视口，避开地址栏 */
+      height:100vw;
+      margin-left:-50vh; margin-left:-50dvh;
+      margin-top:-50vw;
+      transform:rotate(90deg);
+    }
+    #touchui{
+      left:50%; top:50%; right:auto; bottom:auto;
+      width:100vh; width:100dvh;
+      height:100vw;
+      margin-left:-50vh; margin-left:-50dvh;
+      margin-top:-50vw;
+      transform:rotate(90deg);
+    }
   }
 
   /* ===== 手机端虚拟按键（触屏设备才显示） ===== */
