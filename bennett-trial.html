@@ -271,9 +271,11 @@ function ensureTouchUI(){
   if(typeof document === 'undefined') return;
   var ui = document.getElementById('touchui');
   if(!ui) return;
-  // 触摸设备且非桌面系统（Windows/Mac）→ 显示虚拟键；全屏后同样保持
+  // 触摸设备且非桌面系统 → 显示虚拟键。
+  // 注意：老 WebView/微信X5 可能不支持 navigator.maxTouchPoints，故只用 ontouchstart 判定；
+  // Windows/Mac（含触屏笔记本）仍排除。
   var ua = (typeof navigator !== 'undefined' && navigator.userAgent) || '';
-  var isMobile = ('ontouchstart' in window) && (navigator.maxTouchPoints > 0) && !/Windows|Macintosh/i.test(ua);
+  var isMobile = ('ontouchstart' in window) && !/Windows|Macintosh/i.test(ua);
   ui.style.display = isMobile ? 'block' : 'none';
 }
 function bindTouchUI(){
@@ -286,16 +288,26 @@ function bindTouchUI(){
       setActive(false);
       if(up) up();
     }
-    el.addEventListener('pointerdown', function(e){
-      if(e && e.preventDefault) e.preventDefault();
+    // pointer + touch 双绑定（微信 X5 等内核 PointerEvent 支持不全，touch 事件兜底）；
+    // 80ms 去重防止一次触摸同时触发两种事件导致重复触发
+    var lastDown = 0;
+    function downOnce(e){
+      if(e && e.cancelable) e.preventDefault();
+      var now = (typeof performance !== 'undefined' && performance.now) ? performance.now() : Date.now();
+      if(now - lastDown < 80) return;
+      lastDown = now;
       setActive(true);
       SFX.ensure();
       tryFullscreen();
       if(down) down();
-    });
+    }
+    el.addEventListener('pointerdown', downOnce);
+    el.addEventListener('touchstart', downOnce, { passive:false });
     el.addEventListener('pointerup', release);
     el.addEventListener('pointercancel', release);
     el.addEventListener('pointerleave', release);
+    el.addEventListener('touchend', release);
+    el.addEventListener('touchcancel', release);
     if(el.addEventListener) el.addEventListener('contextmenu', function(e){ if(e) e.preventDefault(); });
   }
   // 移动（复用键盘 held 逻辑：左右同时按则抵消）
